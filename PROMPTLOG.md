@@ -24,3 +24,22 @@
 3. **cancel() strategy:** Used lazy deletion (flag) to maintain $O(1)$ and heap consistency.
 4. **schedule() complexity:** $O(\log n)$ due to `heapq.heappush`.
 5. **Missing sequence counter:** Would lead to non-determinism and `TypeError` on non-comparable callbacks.
+
+## [2026-03-04] Radio Channel Model and PRR Calculations
+**Goal:** Create module 'channel' (PRR calculations).
+**Tool:** Gemini CLI + Gemini Pro.
+**What the AI proposed:**
+- `ChannelModel` with log-distance path loss, log-normal shadowing, and PRR calculation.
+- Initial proposal had inconsistent units (dBm/mW mix).
+- Unit tests covering monotonicity, reference distance, and reproducibility.
+- Experiment script (`experiments/plot_prr_distance.py`) to visualize PRR(d) with different sigma values.
+- Comprehensive documentation in `reports/CHANNEL_VALIDATION.md` including manual numerical validation points.
+
+**What I accepted/changed:**
+- Insisted on using meters (m) for distance and milliWatts (mW) for power to maintain project consistency.
+- Corrected unit handling in `calculate_prr`.
+- Updated experiments to support CLI-based table output as well as Matplotlib.
+
+**Validation:** 
+- `pytest tests/test_channel.py` is all green (7/7 tests passed).
+- Manual validation against numerical points (PRR=0.0308 at 10m, -25dBm).
