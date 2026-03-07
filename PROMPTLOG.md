@@ -43,3 +43,44 @@
 **Validation:** 
 - `pytest tests/test_channel.py` is all green (7/7 tests passed).
 - Manual validation against numerical points (PRR=0.0308 at 10m, -25dBm).
+
+
+## [2026-03-07] Energy Model Refinement and Lifetime Analysis
+**Goal:** Finalize `energy.py` and analyze WSN node lifetime.
+**Tool:** Gemini CLI, Gemini Code Assist, Gemini AI Pro
+**What the AI proposed:**
+- Refactored `EnergyModel.update_state` to accurately calculate the "time of death" if a node runs out of energy mid-interval.
+- Fixed a critical bug where the last time-slice before battery exhaustion was being lost in metrics.
+- Implemented a formal `pytest` suite in `tests/test_energy.py` with 6 cases covering scenarios like wakeup costs, mid-interval death, and time-sum consistency.
+- Created `experiments/plot_lifetime_dutycycle.py` to visualize the exponential impact of duty cycling on battery life.
+- Using cross validation between AI tools, the update_state() function was fine tuned to evade the egde cases.
+**What I accepted/changed:**
+- Explicitly requested a "negative energy guard" and "sanity check" for total time consistency in the tests.
+- Adjusted test assertions to use `pytest.approx` to handle floating-point precision issues in time-tracking.
+- Verified unit conversions: mW for power, mJ for transitions, Joules for capacity.
+
+
+**Validation:**
+- `pytest tests/` (17/17 passed).
+- Lifetime experiment confirmed ~5 years of operation at 0.1% duty cycle vs. ~4 days at 100%.
+- Plot generated at `reports/figures/lifetime_vs_dutycycle.png`.
+
+
+## [2026-03-07] Energy Model Refinement and Lifetime Analysis
+**Goal:** Finalize `energy.py` and analyze WSN node lifetime.
+**Tool:** Gemini CLI, Gemini Code Assist, Gemini AI Pro
+**What the AI proposed:**
+- Refactored `EnergyModel.update_state` to accurately calculate the "time of death" if a node runs out of energy mid-interval.
+- Fixed a critical bug where the last time-slice before battery exhaustion was being lost in metrics.
+- Implemented a formal `pytest` suite in `tests/test_energy.py` with 6 cases covering scenarios like wakeup costs, mid-interval death, and time-sum consistency.
+- Created `experiments/plot_lifetime_dutycycle.py` to visualize the exponential impact of duty cycling on battery life.
+- Using cross validation between AI tools, the update_state() function was fine tuned to evade the egde cases.
+**What I accepted/changed:**
+- Explicitly requested a "negative energy guard" and "sanity check" for total time consistency in the tests.
+- Adjusted test assertions to use `pytest.approx` to handle floating-point precision issues in time-tracking.
+- Verified unit conversions: mW for power, mJ for transitions, Joules for capacity.
+
+**Validation:**
+- `pytest tests/` (17/17 passed).
+- Lifetime experiment confirmed ~5 years of operation at 0.1% duty cycle vs. ~4 days at 100%.
+- Plot generated at `reports/figures/lifetime_vs_dutycycle.png`.
