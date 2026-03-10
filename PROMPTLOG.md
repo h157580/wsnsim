@@ -65,22 +65,26 @@
 - Lifetime experiment confirmed ~5 years of operation at 0.1% duty cycle vs. ~4 days at 100%.
 - Plot generated at `reports/figures/lifetime_vs_dutycycle.png`.
 
-
-## [2026-03-07] Energy Model Refinement and Lifetime Analysis
-**Goal:** Finalize `energy.py` and analyze WSN node lifetime.
-**Tool:** Gemini CLI, Gemini Code Assist, Gemini AI Pro
+## [2026-03-10] MAC Protocol Implementation and Collision Analysis
+**Goal:** Implement ALOHA MAC (send at will) & CSMA backoff (carrier sense + random backoff) modules. Provide the possibility to configure slot, cwmin, cwmax. Write deterministic tests with 2  node, verify & handle collisions. Document the seed for testing.
+**Tool:** Gemini CLI, Gemini AI Pro
 **What the AI proposed:**
-- Refactored `EnergyModel.update_state` to accurately calculate the "time of death" if a node runs out of energy mid-interval.
-- Fixed a critical bug where the last time-slice before battery exhaustion was being lost in metrics.
-- Implemented a formal `pytest` suite in `tests/test_energy.py` with 6 cases covering scenarios like wakeup costs, mid-interval death, and time-sum consistency.
-- Created `experiments/plot_lifetime_dutycycle.py` to visualize the exponential impact of duty cycling on battery life.
-- Using cross validation between AI tools, the update_state() function was fine tuned to evade the egde cases.
+- Refined `CsmaMac` in `wsnsim/mac.py` to include reliable ACK timeout and retransmission logic.
+- Implemented a "Freeze" mechanism for CSMA/CA where the backoff counter pauses during channel activity.
+- Using cross validation between AI tools
+- Created a `DeterministicChannel` in `tests/test_mac.py` to strictly control transmission overlaps for validation.
+- Developed three key test cases:
+    - `test_pure_aloha_collision`: Confirmed nodes collide if they overlap by even a small margin.
+    - `test_slotted_aloha_collision`: Confirmed nodes sync to slot boundaries, colliding only if they pick the same slot.
+    - `test_csma_avoidance`: Verified that CSMA nodes detect a busy channel, freeze their counter, and wait for IDLE before transmitting.
+- Produced a comparison table summarizing the trade-offs between ALOHA variants and CSMA/CA.
+
 **What I accepted/changed:**
-- Explicitly requested a "negative energy guard" and "sanity check" for total time consistency in the tests.
-- Adjusted test assertions to use `pytest.approx` to handle floating-point precision issues in time-tracking.
-- Verified unit conversions: mW for power, mJ for transitions, Joules for capacity.
+- Increased simulation time in `test_csma_avoidance` to account for long random backoff windows (Node 1 picked 12 slots).
+- Verified that `waiting_for_ack` is correctly reset during retransmission attempts.
+- Ensured unit consistency across all MAC protocols (seconds for slots/timeouts, mW for power).
 
 **Validation:**
-- `pytest tests/` (17/17 passed).
-- Lifetime experiment confirmed ~5 years of operation at 0.1% duty cycle vs. ~4 days at 100%.
-- Plot generated at `reports/figures/lifetime_vs_dutycycle.png`.
+- `pytest tests/test_mac.py` (3/3 passed).
+- Total project tests: 20/20 passed.
+- Debug traces confirmed "Freeze" logic: Node 1 paused at T=0.002 and resumed only after Node 0 finished at T=0.005.
