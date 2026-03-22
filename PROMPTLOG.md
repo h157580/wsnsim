@@ -88,3 +88,57 @@
 - `pytest tests/test_mac.py` (3/3 passed).
 - Total project tests: 20/20 passed.
 - Debug traces confirmed "Freeze" logic: Node 1 paused at T=0.002 and resumed only after Node 0 finished at T=0.005.
+
+## [2026-03-20] Topology Generators and Spatial Optimization
+**Goal:** Implement topology generators (Random, Grid, Cluster) with NetworkX visualization and optimized spatial graph generation.
+**Tool:** Gemini CLI
+**What the AI proposed:**
+- Created `wsnsim/common.py` with a 2D `Position` dataclass.
+- Implemented `RandomTopology`, `GridTopology`, and `ClusterTopology` in `wsnsim/topology.py`.
+- Designed `generate()` as a pure method to eliminate mutable internal state.
+- Added rich metadata (x, y, pos) to NetworkX nodes and implemented `save_visualization` for exporting topology PNGs.
+- Created `tests/test_topology.py` covering reproducibility, connectivity, and distribution correctness.
+- Added `experiments/generate_topology_samples.py` to verify visual output.
+
+**What I accepted/changed:**
+- Removed initial 3D support to simplify the model to a strictly 2D plane as per project requirements.
+- Refactored `ClusterTopology` from a sequential head assignment to a stochastic one for more natural distributions.
+- Resolved dependency issues (`typing_extensions`, `pytest`, `scipy`) in the local environment to support KDTree and type checking.
+- Optimized `to_graph` using `scipy.spatial.KDTree` and `sparse_distance_matrix` to achieve $O(N \log N)$ performance and avoid redundant distance recomputations.
+**Validation:**
+- `pytest tests/test_topology.py` is all green (5/5 tests passed).
+- Total project tests: 25/25 passed.
+- Visual validation: Sample PNGs generated in `reports/figures/` (random, grid, cluster) confirmed correct spatial distribution and connectivity.
+
+## [2026-03-21] Topology Connectivity and Visualization Refinement
+**Goal:** Implement connectivity metrics, reproducibility verification, and enhanced visualization.
+**Tool:** Gemini CLI
+**What the AI proposed:**
+- Added `get_connectivity_metrics()` to the `Topology` class to provide graph-theoretic analysis (Sink Reachability, Average Degree, Component Count).
+- Refined `_create_plot` in `wsnsim/topology.py`:
+    - Designated **Node 0** as the Sink (Red Square).
+    - Added a **Legend** for sensors, sinks, and links.
+    - Implemented a **10-meter grid/tick interval** using `MultipleLocator`.
+    - Simplified node labels to show only IDs.
+- Created `experiments/plot_seed_reproducibility.py` to verify that identical seeds produce identical $(x, y)$ coordinates and connectivity.
+- Updated `tests/test_topology.py` with connectivity-specific assertions.
+- Updated `PROJECT_BRIEF.md` to reflect new topology standards.
+
+**What I accepted/changed:**
+- Requested 10-meter grid intervals for better scale reference.
+- Removed (x, y) coordinates from node labels to keep the plot clean.
+- Fixed a `TypeError` regarding the `marker` argument in `nx.draw_networkx_nodes` by using `node_shape`.
+
+**Validation:**
+- `pytest tests/test_topology.py` (7/7 passed).
+- Visual validation: `reports/figures/seed_reproducibility.png` confirms exact coordinate matching for identical seeds.
+- Sample generation script updated with new legend and grid.
+
+## [2026-03-22] Q&A Summary: wsnsim/topology.py
+**Prompt:** Q&A session to confirm understanding of the topology module.
+**Outcome (Completed):**
+1. **Performance:** KDTree optimizes neighbor finding from $O(N^2)$ to $O(N \log N)$ for large networks.
+2. **Connectivity:** Sink reachability is emphasized because it measures data delivery potential to the sink (node 0) rather than requiring every single node to be globally connected.
+3. **Reproducibility:** Seeds ensure deterministic pseudo-random number generator (PRNG) states for consistent coordinate generation across runs.
+4. **Architecture:** Returning Position objects instead of Node objects strictly separates the "where" (topology) from the "what" (simulation logic, MAC, energy), improving testability and code cleanliness.
+5. **Visualization:** 10m grid allows quick visual verification that the communication range `range_m` aligns correctly on the topology plots.
