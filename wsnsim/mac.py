@@ -2,12 +2,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional, Callable
 import numpy as np
+from .energy import RadioState
 
 if TYPE_CHECKING:
     from numpy.random import Generator
     from .sim import EventScheduler
     from .energy import EnergyModel
-    from .energy import RadioState
 
 
 @dataclass(frozen=True)
@@ -49,7 +49,7 @@ class BaseMac:
     def _transmit(self, payload: Any, dest_id: int, tx_power_mw: float):
         """Low-level transmission call."""
         self._update_radio("TX")
-        self.waiting_for_ack = True
+        self.waiting_for_ack = (dest_id != -1)
         self.channel.transmit(self.node_id, payload, dest_id, tx_power_mw, self.config.tx_duration)
         self.scheduler.schedule(self.config.tx_duration, self._update_radio, "IDLE")
 

@@ -61,3 +61,5 @@ The simulator supports varied deployment scenarios to evaluate protocol performa
 - **Spatial Optimization**: Graph generation from positions uses `scipy.spatial.KDTree` and `sparse_distance_matrix` to achieve $O(N \log N)$ neighbor lookups, avoiding $O(N^2)$ brute-force distance checks for large networks.
 - **Pure Generation**: Topology generators are implemented as pure methods (`generate() -> List[Position]`) without internal state, ensuring that the same configuration can be used to generate multiple realizations if needed, and simplifying testing/verification.
 - **2D Plane Constraint**: All spatial calculations are currently restricted to the 2D plane ($x, y$) for performance and simplicity in basic research scenarios.
+- **Routing Next Hop**: Routing protocols explicitly set `packet.next_hop` before passing the packet down to the MAC layer. This determines whether the transmission is a unicast (expecting an ACK) or a broadcast (no ACK).
+- **Flooding Cache**: `FloodingRouting` uses a predictable FIFO queue combined with a Set for $O(1)$ lookups to prevent broadcast storms of recently seen packets.

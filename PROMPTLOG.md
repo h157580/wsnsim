@@ -142,3 +142,25 @@
 3. **Reproducibility:** Seeds ensure deterministic pseudo-random number generator (PRNG) states for consistent coordinate generation across runs.
 4. **Architecture:** Returning Position objects instead of Node objects strictly separates the "where" (topology) from the "what" (simulation logic, MAC, energy), improving testability and code cleanliness.
 5. **Visualization:** 10m grid allows quick visual verification that the communication range `range_m` aligns correctly on the topology plots.
+
+## [2026-04-03] Routing Strategies Comparison & Refinement
+**Goal:** Compare Flooding and Tree routing strategies and refine their implementations.
+**Tool:** Gemini CLI
+**What the AI proposed:**
+- Created a simulation script `experiments/compare_routing_strategies.py` integrating MAC, Energy, Channel, and Routing layers.
+- Added a `SimpleGlobalChannel` to simulate global interference and distance-based packet reception.
+- Refined `FloodingRouting` cache eviction from a non-deterministic `set.pop()` to a predictable `FIFO` queue.
+- Added `IndexError` safety checks to `TreeRouting` for scenarios where no path to the sink exists.
+- Fixed an issue where broadcast packets were incorrectly expecting ACKs in the MAC layer.
+- Explicitly set `packet.next_hop` in the `forward()` methods of routing classes to ensure the MAC layer addresses frames correctly.
+- Created `experiments/plot_routing_comparison.py` to sweep across different network densities and plot PDR, Latency, and Energy per Bit.
+
+**What I accepted/changed:**
+- Addressed the broadcast storm problem by scaling down the network size and traffic to make simulation times practical.
+- Suggested deduplicating received packets at the sink to calculate an accurate PDR.
+- Pointed out the side-effects of modifying the `packet` object directly without making copies for different receivers.
+- Guided the adjustment of TX power and area size to simulate a "Fragile Network" scenario, revealing the spatial diversity benefits of Flooding over Tree routing in unstable environments.
+
+**Validation:**
+- Successfully ran baseline and fragile network scenarios showing Tree routing's energy efficiency (100% PDR, ~230 TX) vs Flooding's overhead (~1700 TX) in stable networks.
+- Visualized results in `reports/figures/routing_comparison_sweep.png`, confirming theoretical scaling behaviors.
