@@ -25,3 +25,4 @@ class Packet:
     ttl: int = 64
     next_hop: int = -1  # -1 for broadcast
     hop_count: int = 0
+    is_ack: bool = False

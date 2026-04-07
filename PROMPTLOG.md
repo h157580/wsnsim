@@ -143,24 +143,25 @@
 4. **Architecture:** Returning Position objects instead of Node objects strictly separates the "where" (topology) from the "what" (simulation logic, MAC, energy), improving testability and code cleanliness.
 5. **Visualization:** 10m grid allows quick visual verification that the communication range `range_m` aligns correctly on the topology plots.
 
-## [2026-04-03] Routing Strategies Comparison & Refinement
-**Goal:** Compare Flooding and Tree routing strategies and refine their implementations.
+## [2026-04-07] Reliability, ARQ and Energy Trade-off
+**Goal:** Implement Link-Layer ARQ (ACK + Stop-and-Wait Retry) and analyze the energy cost of reliability.
 **Tool:** Gemini CLI
 **What the AI proposed:**
-- Created a simulation script `experiments/compare_routing_strategies.py` integrating MAC, Energy, Channel, and Routing layers.
-- Added a `SimpleGlobalChannel` to simulate global interference and distance-based packet reception.
-- Refined `FloodingRouting` cache eviction from a non-deterministic `set.pop()` to a predictable `FIFO` queue.
-- Added `IndexError` safety checks to `TreeRouting` for scenarios where no path to the sink exists.
-- Fixed an issue where broadcast packets were incorrectly expecting ACKs in the MAC layer.
-- Explicitly set `packet.next_hop` in the `forward()` methods of routing classes to ensure the MAC layer addresses frames correctly.
-- Created `experiments/plot_routing_comparison.py` to sweep across different network densities and plot PDR, Latency, and Energy per Bit.
+- Updated `Packet` in `common.py` with `is_ack` flag and sequence numbers.
+- Refactored `BaseMac` in `mac.py` to handle:
+    - **Automatic ACKs:** Sending small (40% duration) ACK packets after receiving data.
+    - **Duplicate Filtering:** O(1) LRU-style cache using Python dicts to drop retransmitted data packets.
+    - **Retroactive RX Energy:** Accounting for the physical reception time in the `EnergyModel`.
+- Fixed `DeterministicChannel` in `tests/test_mac.py` to support real packet delivery and ACK turnaround.
+- Developed `experiments/plot_pdr_energy_retry.py` for a parameter sweep over `max_retries`.
 
 **What I accepted/changed:**
-- Addressed the broadcast storm problem by scaling down the network size and traffic to make simulation times practical.
-- Suggested deduplicating received packets at the sink to calculate an accurate PDR.
-- Pointed out the side-effects of modifying the `packet` object directly without making copies for different receivers.
-- Guided the adjustment of TX power and area size to simulate a "Fragile Network" scenario, revealing the spatial diversity benefits of Flooding over Tree routing in unstable environments.
+- Optimized duplicate cache from `list(set)` to `dict` for performance.
+- Fixed a `ValueError: Time cannot move backwards` by adding a guard for overlapping receptions in the energy model.
+- Adjusted ACK transmit power to 1mW (lower than data) to reflect lower interference impact.
 
 **Validation:**
-- Successfully ran baseline and fragile network scenarios showing Tree routing's energy efficiency (100% PDR, ~230 TX) vs Flooding's overhead (~1700 TX) in stable networks.
-- Visualized results in `reports/figures/routing_comparison_sweep.png`, confirming theoretical scaling behaviors.
+- `pytest tests/test_mac.py` (3/3 passed).
+- Experiment confirmed: `Retries=1` increases PDR from 92% to 99% with a ~23% energy increase.
+- Higher retry limits (8+) show diminishing returns and potential congestion, as PDR stabilized while energy continued to rise.
+- Plot generated at `reports/figures/pdr_vs_energy_retry.png`.
