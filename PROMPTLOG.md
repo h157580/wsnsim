@@ -145,7 +145,7 @@
 
 ## [2026-04-07] Reliability, ARQ and Energy Trade-off
 **Goal:** Implement Link-Layer ARQ (ACK + Stop-and-Wait Retry) and analyze the energy cost of reliability.
-**Tool:** Gemini CLI
+**Tool:** Gemini CLI, Gemini AI Pro
 **What the AI proposed:**
 - Updated `Packet` in `common.py` with `is_ack` flag and sequence numbers.
 - Refactored `BaseMac` in `mac.py` to handle:
@@ -165,3 +165,54 @@
 - Experiment confirmed: `Retries=1` increases PDR from 92% to 99% with a ~23% energy increase.
 - Higher retry limits (8+) show diminishing returns and potential congestion, as PDR stabilized while energy continued to rise.
 - Plot generated at `reports/figures/pdr_vs_energy_retry.png`.
+
+## [2026-04-20] Clock Drift Simulation and Trilateration Localization
+**Goal:** Implement clock drift modeling (ppm) and RSSI-based trilateration for node localization.
+**Tool:** Gemini CLI, Gemini AI Pro
+**What the AI proposed:**
+- Created `wsnsim/sync_localization.py` with:
+    - `SyncClock`: Simulates local node clocks with a constant ppm drift and offset.
+    - `trilaterate()`: Least Squares (LS) based 2D position estimation using linearized equations.
+    - `estimate_distance_from_rssi()`: Back-calculation of distance using the log-distance path loss model.
+- Developed a comprehensive test suite in `tests/test_sync_localization.py` covering:
+    - Ideal (zero noise) localization.
+    - Standard 4dB shadowing noise impact.
+    - **DOP (Dilution of Precision)** analysis: demonstrated that position error skyrockets when nodes are outside the anchor hull (up to 91m error with only 2dB noise).
+    - Anchor count effect (averaging benefits of 10 vs 3 anchors).
+- Created `experiments/plot_localization_error.py` to visualize the relationship between shadowing sigma and position error.
+
+**What I accepted/changed:**
+- Explicitly requested a ppm-based drift model.
+- Insisted on a "deterministic first" verification before adding noise.
+- Validated the "Jensen-inequality" effect: RSSI noise in dB domain leads to non-symmetric errors in the distance domain.
+
+**Validation:**
+- `pytest tests/test_sync_localization.py` (8/8 passed).
+- Total project tests: 33/33 passed.
+- Experiment plot confirmed that localization error is near-exponential with respect to shadowing sigma (dB).
+
+## [2026-04-21] In-Network Data Aggregation and Robust Compression
+**Goal:** Implement a modular data aggregation pipeline with Delta-encoding and robust tree-based weighting.
+**Tool:** Gemini CLI
+**What the AI proposed:**
+- Created `wsnsim/aggregation.py` with an abstract `AggregationStrategy` interface.
+- Implemented `TreeDeltaAvgStrategy` featuring:
+    - **Threshold-based Filtering:** Suppresses transmissions if the change is below a deadband (T).
+    - **Weighted Average:** Ensures associativity in multi-hop trees by tracking sample counts.
+    - **Periodic Reset:** Forces absolute values every $R$ transmissions to prevent cumulative drift.
+- Integrated the pipeline into the routing layer via `AggregatingTreeRouting` in `wsnsim/routing.py`.
+- Updated `Packet` in `wsnsim/common.py` with `is_absolute` and `sample_weight` fields.
+- Developed `experiments/evaluate_routing_aggregation.py` to measure trade-offs between communication reduction and reconstruction error (MSE).
+- Generated a formal report in `reports/AGGREGATION_PERFORMANCE.md`.
+
+**What I accepted/changed:**
+- Explicitly requested the **Threshold (T)** parameter to enhance energy savings.
+- Identified and fixed a syntax error in `routing.py` caused by a corrupted class definition during merge.
+- Added a **periodic reset** mechanism to handle potential packet loss drift in delta-encoding.
+- Changed the random seed to **57** to verify consistency across different noise profiles.
+
+**Validation:**
+- `pytest tests/test_aggregation.py` (4/4 passed).
+- Integration test: `evaluate_routing_aggregation.py` confirmed 96.8% traffic reduction with MSE < 0.02.
+- Verified that `is_absolute` metadata allows the Sink to perfectly reset its baseline.
+- Plot generated at `reports/figures/robust_aggregation_test.png`.
