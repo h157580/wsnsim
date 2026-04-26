@@ -26,3 +26,5 @@ class Packet:
     next_hop: int = -1  # -1 for broadcast
     hop_count: int = 0
     is_ack: bool = False
+    is_absolute: bool = True  # True if payload is absolute, False if it is a Delta
+    sample_weight: int = 1    # Number of raw samples represented by this packet

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Dict, List, Optional, Set, Any
 from .common import Packet
+from .aggregation import AggregationStrategy, PassthroughStrategy
 
 class BaseRouting:
     """Base class for all routing strategies."""
@@ -129,3 +130,45 @@ class TreeRouting(BaseRouting):
         packet.hop_count += 1
         packet.next_hop = self.parent_id
         return self.parent_id
+
+class AggregatingTreeRouting(TreeRouting):
+    """Convergecast routing with in-network aggregation.
+    
+    This router buffers incoming payloads using an AggregationStrategy
+    and only forwards a packet when the strategy returns a new payload.
+    """
+    
+    def __init__(self, node_id: int, parent_id: Optional[int] = None, 
+                 strategy: Optional[AggregationStrategy] = None):
+        super().__init__(node_id, parent_id)
+        # Default to Passthrough if no strategy is provided
+        self.strategy = strategy or PassthroughStrategy()
+
+    def forward(self, packet: Packet) -> Optional[int]:
+        """Buffer the packet payload and only forward when the strategy triggers."""
+        
+        # Only aggregate data packets destined for the sink (Node 0)
+        if packet.dest != 0 or self.node_id == 0 or packet.is_ack:
+            return super().forward(packet)
+
+        # Process payload through the aggregation strategy
+        try:
+            # Pass payload, weight and get back updated metadata
+            result = self.strategy.process_data(
+                float(packet.payload), 
+                weight=packet.sample_weight
+            )
+        except (ValueError, TypeError):
+            # If payload is not a number, forward normally
+            return super().forward(packet)
+        
+        if result is not None:
+            payload, total_weight, is_absolute = result
+            # Update the packet with aggregated data and metadata
+            packet.payload = payload
+            packet.sample_weight = total_weight
+            packet.is_absolute = is_absolute
+            return super().forward(packet)
+        
+        # Suppressed (buffered or threshold-filtered)
+        return None
