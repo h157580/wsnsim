@@ -28,3 +28,5 @@ class Packet:
     is_ack: bool = False
     is_absolute: bool = True  # True if payload is absolute, False if it is a Delta
     sample_weight: int = 1    # Number of raw samples represented by this packet
+    nonce: int = 0            # Security: unique counter to prevent replay attacks
+    size_bytes: int = 8       # Physical size in bytes (payload + headers)

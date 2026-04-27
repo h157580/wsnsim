@@ -37,7 +37,8 @@ class DeterministicChannel:
         self.history.append((node_id, start_time, end_time, packet))
         
         # Schedule delivery at the end of transmission duration
-        self.scheduler.schedule(duration, self._end_transmission, node_id, dest_id, packet, is_collision)
+        # Matches Mac layer expectation: calls mac.receive with duration
+        self.scheduler.schedule(duration, self._end_transmission, node_id, dest_id, packet, duration, is_collision)
 
     def _end_transmission(self, node_id: int, dest_id: int, packet: Packet, duration: float, was_collision_at_start: bool):
         if node_id in self.active_transmitters:
@@ -60,7 +61,9 @@ class DeterministicChannel:
                         packet_id=packet.packet_id,
                         ttl=packet.ttl,
                         next_hop=packet.next_hop,
-                        is_ack=packet.is_ack
+                        is_ack=packet.is_ack,
+                        nonce=packet.nonce,
+                        size_bytes=packet.size_bytes
                     )
                     mac.receive(pkt_copy, duration)
         
@@ -80,7 +83,8 @@ def mac_config():
         cw_max=31,
         max_retries=3,
         tx_duration=0.005,
-        ack_timeout=0.03 # Increased for real ACK turnaround
+        ack_timeout=0.03, # Increased for real ACK turnaround
+        bit_rate=250000.0
     )
 
 def test_pure_aloha_collision(scheduler, mac_config):
@@ -99,8 +103,8 @@ def test_pure_aloha_collision(scheduler, mac_config):
 
     # Node 0 starts at T=0
     scheduler.schedule(0, mac0.send, p0, 1, 1.0)
-    # Node 1 starts at T=0.002 (overlaps)
-    scheduler.schedule(0.002, mac1.send, p1, 0, 1.0)
+    # Node 1 starts at T=0.0001 (overlaps with 0.000256 duration)
+    scheduler.schedule(0.0001, mac1.send, p1, 0, 1.0)
 
     scheduler.run(until=0.2)
 

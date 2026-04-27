@@ -20,19 +20,22 @@ class MacConfig:
     cw_min: int = 7                # Binary backoff initial window (slots)
     cw_max: int = 1023             # Binary backoff max window (slots)
     max_retries: int = 5           # Max retransmission attempts
-    tx_duration: float = 0.005     # Matches slot_time for Slotted ALOHA
+    tx_duration: float = 0.005     # Default duration (fallback)
     ack_timeout: float = 0.015     # Time to wait for an ACK before backoff
+    bit_rate: float = 250000.0     # 250 kbps (standard for 802.15.4)
 
 class BaseMac:
     """Common state and energy tracking for MAC protocols."""
     def __init__(self, node_id: int, scheduler: EventScheduler, rng: Generator, 
-                 config: MacConfig, channel: Any, energy_model: Optional[EnergyModel] = None):
+                 config: MacConfig, channel: Any, energy_model: Optional[EnergyModel] = None,
+                 security_model: Optional[Any] = None):
         self.node_id = node_id
         self.scheduler = scheduler
         self.rng = rng
         self.config = config
         self.channel = channel
         self.energy_model = energy_model
+        self.security_model = security_model
         
         self.on_receive_data: Optional[Callable[[Any], None]] = None
         self.retries = 0
@@ -55,13 +58,24 @@ class BaseMac:
 
         # Retroactive energy accounting for the reception period
         if self.energy_model:
+            # If already dead, we can't receive anything
+            if self.energy_model.is_out_of_energy(self.scheduler.current_time):
+                return
+
             # Update up to the start of reception
-            # Ensure we don't try to update to a time before the last change
             last_change = self.energy_model.metrics.last_state_change_time
             start_rx_time = max(last_change, self.scheduler.current_time - duration)
             
             self.energy_model.update_state(RadioState.RX, start_rx_time)
             self.energy_model.update_state(RadioState.IDLE, self.scheduler.current_time)
+
+        # Security Verification (skip for ACKs for now to avoid complexity)
+        if self.security_model and not packet.is_ack:
+            from .common import Packet
+            if isinstance(packet, Packet):
+                if not self.security_model.verify_packet(packet, self.energy_model, self.scheduler.current_time):
+                    # Replay detected or invalid OR node died during verification - drop the packet
+                    return
 
         if packet.is_ack:
             self._handle_ack(packet)
@@ -98,6 +112,10 @@ class BaseMac:
 
     def _send_ack(self, dest_id: int, packet_id: int):
         """Transmit a small ACK packet."""
+        # Final energy check
+        if self.energy_model and self.energy_model.is_out_of_energy(self.scheduler.current_time):
+            return
+
         from .common import Packet
         ack_pkt = Packet(
             src=self.node_id,
@@ -114,12 +132,45 @@ class BaseMac:
         self.scheduler.schedule(ack_duration, self._update_radio, "IDLE")
 
     def _transmit(self, payload: Any, dest_id: int, tx_power_mw: float):
-        """Low-level transmission call."""
+        """Low-level transmission call with security signing and dynamic duration."""
+        from .common import Packet
+        
+        # 0. Check if we have energy to even start
+        if self.energy_model and self.energy_model.is_out_of_energy(self.scheduler.current_time):
+            return
+
+        # 1. Apply Security Signing (only if not already signed/nonce is 0)
+        latency = 0.0
+        if self.security_model and isinstance(payload, Packet) and payload.nonce == 0:
+            latency = self.security_model.sign_packet(payload, self.energy_model, self.scheduler.current_time)
+            
+        # 2. Re-check energy after potential crypto cost
+        if self.energy_model and self.energy_model.is_out_of_energy(self.scheduler.current_time):
+            return
+
+        # 3. Calculate dynamic transmission duration based on size
+        duration = self.config.tx_duration
+        if isinstance(payload, Packet):
+            # bits / (bits/sec) = seconds
+            duration = (payload.size_bytes * 8) / self.config.bit_rate
+            
+        # 4. Schedule actual transmission after crypto processing delay
+        if latency > 0:
+            self.scheduler.schedule(latency, self._do_transmit, payload, dest_id, tx_power_mw, duration)
+        else:
+            self._do_transmit(payload, dest_id, tx_power_mw, duration)
+
+    def _do_transmit(self, payload: Any, dest_id: int, tx_power_mw: float, duration: float):
+        """Physical radio transmission after potential crypto delay."""
+        # Final energy check
+        if self.energy_model and self.energy_model.is_out_of_energy(self.scheduler.current_time):
+            return
+
         self._update_radio("TX")
         # Set waiting flag for unicast (dest_id != -1)
         self.waiting_for_ack = (dest_id != -1)
-        self.channel.transmit(self.node_id, payload, dest_id, tx_power_mw, self.config.tx_duration)
-        self.scheduler.schedule(self.config.tx_duration, self._update_radio, "IDLE")
+        self.channel.transmit(self.node_id, payload, dest_id, tx_power_mw, duration)
+        self.scheduler.schedule(duration, self._update_radio, "IDLE")
 
 class PureAlohaMac(BaseMac):
     """Pure ALOHA: Send immediately, backoff on ACK timeout."""
@@ -171,6 +222,7 @@ class CsmaMac(BaseMac):
         self.cw = self.config.cw_min
 
     def send(self, payload: Any, dest_id: int, tx_power_mw: float):
+        # print(f"DEBUG: Node {self.node_id} MAC.send called for payload {payload.payload}")
         self.retries = 0
         self.cw = self.config.cw_min
         self._start_new_backoff(payload, dest_id, tx_power_mw)
@@ -180,6 +232,10 @@ class CsmaMac(BaseMac):
         self._backoff_step(payload, dest_id, tx_power_mw)
 
     def _backoff_step(self, payload: Any, dest_id: int, tx_power_mw: float):
+        # Stop if we already got an ACK for this transmission (e.g. from previous attempt)
+        if not self.waiting_for_ack and self.retries > 0:
+            return
+
         if self.backoff_slots == 0:
             if not self.channel.is_busy(self.node_id):
                 self._transmit(payload, dest_id, tx_power_mw)

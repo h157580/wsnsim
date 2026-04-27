@@ -193,7 +193,7 @@
 
 ## [2026-04-21] In-Network Data Aggregation and Robust Compression
 **Goal:** Implement a modular data aggregation pipeline with Delta-encoding and robust tree-based weighting.
-**Tool:** Gemini CLI
+**Tool:** Gemini CLI, Gemini AI Pro 
 **What the AI proposed:**
 - Created `wsnsim/aggregation.py` with an abstract `AggregationStrategy` interface.
 - Implemented `TreeDeltaAvgStrategy` featuring:
@@ -216,3 +216,30 @@
 - Integration test: `evaluate_routing_aggregation.py` confirmed 96.8% traffic reduction with MSE < 0.02.
 - Verified that `is_absolute` metadata allows the Sink to perfectly reset its baseline.
 - Plot generated at `reports/figures/robust_aggregation_test.png`.
+
+## [2026-04-26] WSN Security: Overhead Modeling and Replay Protection
+**Goal:** Implement a lightweight security overhead model and nonce-based replay protection.
+**Tool:** Gemini CLI
+**What the AI proposed:**
+- Updated `Packet` in `common.py` with `nonce` and `size_bytes` fields.
+- Created `wsnsim/security.py` with a `SecurityModel` to handle signing/verification and track energy/latency/size overhead.
+- Refactored `wsnsim/mac.py` to be "energy-aware":
+    - Added guards to prevent TX/RX/ACK if the node is out of energy.
+    - Integrated `consume_energy` to properly trigger the "death" state (SLEEP) during crypto operations.
+- Enhanced `EnergyModel` with a `consume_energy` method for instantaneous CPU-bound consumption.
+- Developed a three-tiered test suite in `tests/test_security.py` covering logic, MAC integration, and network-level replay.
+- Created an abuse-case experiment (`experiments/plot_security_tradeoff.py`) with a `ReplayAttacker` node.
+
+**What I accepted/changed:**
+- Insisted on a generic overhead model (energy tax + size increase) rather than a specific crypto library.
+- Simplified the abuse-case test to use `PureAlohaMac` for stability during multi-scene simulations.
+- Refined the `ReplayAttacker` to bypass simple duplicate filters by modifying `packet_id`, highlighting the necessity of `nonce` protection.
+- Fixed a bug where legitimate retransmissions were incorrectly incrementing the nonce.
+- **Improved Energy Integrity:** Implemented explicit "death guards" in the MAC layer and `SecurityModel` to ensure nodes physically stop communicating when the battery is exhausted, even if triggered by crypto overhead.
+
+**Validation:**
+- `pytest tests/test_security.py` (3/3 passed).
+- `pytest tests/test_mac.py` (3/3 passed).
+- `pytest tests/test_energy.py` (6/6 passed).
+- Experiment confirmed a **124.6% energy overhead** for security, while successfully preventing data integrity failures (5 packets processed vs 10 in unsecured mode).
+- Plot generated at `reports/figures/security_tradeoff.png`.

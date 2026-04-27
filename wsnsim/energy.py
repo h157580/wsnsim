@@ -126,6 +126,31 @@ class EnergyModel:
 
         self.metrics.current_state = new_state
 
+    def consume_energy(self, amount_j: float, current_time: float) -> bool:
+        """Consumes a fixed amount of energy (e.g., CPU crypto) at a specific time.
+
+        Args:
+            amount_j: Energy to consume in Joules.
+            current_time: The current simulation time.
+
+        Returns:
+            True if the node is still alive, False if it died.
+        """
+        # First, catch up with current time consumption
+        self.update_state(self.metrics.current_state, current_time)
+        
+        if self.metrics.total_energy_consumed_j >= self.config.battery_capacity_joules:
+            return False
+
+        self.metrics.total_energy_consumed_j += amount_j
+        
+        if self.metrics.total_energy_consumed_j >= self.config.battery_capacity_joules:
+            self.metrics.total_energy_consumed_j = self.config.battery_capacity_joules
+            self.metrics.current_state = RadioState.SLEEP
+            return False
+            
+        return True
+
     def get_total_consumed_j(self, current_time: float) -> float:
         """Calculates total consumption up to current_time without changing state.
 
