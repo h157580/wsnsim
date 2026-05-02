@@ -12,6 +12,10 @@ Develop a high-fidelity, discrete-event simulator in Python for research into Wi
 - **mac**: ALOHA, CSMA/CA with exponential backoff.
 - **routing**: flooding + tree routing.
 - **topology**: Deployment (Random, Grid, Cluster) and graph-based analysis.
+- **sync_localization**: Clock drift modeling and RSSI-based trilateration.
+- **aggregation**: In-network data aggregation pipeline (e.g., delta-encoding).
+- **security**: Lightweight security overhead modeling and replay protection.
+- **edge_ai**: Lightweight anomaly detection (Z-Score, EWMA) and data reduction strategies.
 - **common**: Shared types (Position) and utility functions.
 
 ## 3. MAC Layer Strategy
@@ -39,32 +43,64 @@ The simulator supports varied deployment scenarios to evaluate protocol performa
     - **Legend**: Clear identification of sensors, sink, and communication links.
     - **Sink Node Highlighting**: Node 0 is rendered as a distinct red square ('s').
     - **Reproducibility verification**: Script to visualize deterministic generation across different seeds.
+- **Spatial Optimization**: Uses `scipy.spatial.KDTree` and `sparse_distance_matrix` to achieve $O(N \log N)$ neighbor lookups.
 
-## 5. Units
+## 5. Clock Synchronization & Localization
+Precise time and spatial awareness are critical for advanced WSN features:
+- **SyncClock**: Simulates local oscillators with constant ppm (parts per million) drift and initial offsets.
+- **Localization**:
+    - **RSSI-based Distance Estimation**: Back-calculates distance using the log-distance path loss model.
+    - **Trilateration**: Least Squares (LS) based 2D position estimation using linearized equations from anchors.
+    - **DOP Analysis**: Modeling the Dilution of Precision to highlight how anchor geometry impacts accuracy.
+
+## 6. In-Network Data Aggregation
+Reduces traffic volume by combining data from multiple nodes along the routing tree:
+- **Weighted Averaging**: Ensures mathematical associativity in multi-hop trees via `sample_weight`.
+- **Delta-encoding**: Transmits only the difference from the last reported value.
+- **Threshold-based Suppression**: Discards updates if the change is below a deadband value ($T$).
+- **Periodic Reset**: Sends absolute values every $R$ transmissions to prevent cumulative drift.
+
+## 7. WSN Security & Overhead
+Provides a realistic model of security costs in resource-constrained networks:
+- **Overhead Model**: Accounts for CPU energy tax (crypto operations) and packet size increase (signatures, nonces).
+- **Replay Protection**: Uses strictly increasing nonces to prevent attackers from re-injecting valid historical packets.
+- **Energy Integrity**: "Death guards" ensure that nodes stop all physical activity when the battery is exhausted, preventing "zombie" states caused by heavy crypto overhead.
+
+## 8. Edge AI & Data Reduction
+To maximize battery life, the simulator implements on-node intelligence to suppress redundant transmissions:
+- **Detectors**:
+    - **Z-Score**: Sliding-window based approach with standard deviation floor to prevent hyper-sensitivity on perfectly stable signals.
+    - **EWMA**: Recursive exponential moving average. High memory efficiency and excellent performance on non-stationary signals. Uses a `warmup_period` to ensure stable statistics before active detection.
+- **Metrics**:
+    - **Byte-level Saving**: Calculates efficiency by accounting for both data payloads (float32) and protocol overhead (12-byte headers).
+    - **F1-Score**: Harmonic mean of Precision and Recall, ensuring detectors are optimized for both reliability (catching anomalies) and efficiency (minimizing false positives).
+- **Validation Strategy**: Use **Cross-Validation** across multiple seeds to identify the Pareto front between data saving and False Positive Rate (FPR).
+
+## 9. Units
 - **Time**: seconds (s) | **Energy**: Joules (J)
 - **Distance**: meters (m) | **Power**: milliWatts (mW)
 
-## 6. Coding Rules
+## 10. Coding Rules
 - **Environment**: Python 3.11+
 - **Typing**: Strict type hints (PEP 484) for all public interfaces.
 - **Config**: Frozen `dataclasses` for all configuration/parameters.
 - **RNG**: Components must accept a `numpy.random.Generator` instance (using `seed`) for isolated, reproducible randomness. Seed param for every RNG.
 - **Quality**: `pytest` suite required for all modules; Google-style docstrings.
 
-## 7. Definition of Done
+## 11. Definition of Done
 - Green `pytest` suite with >80% coverage.
 - Google-style docstrings and type-annotated parameters.
 - Updated `PROMPTLOG.md` for every major feature/fix.
 
-## 8. Known Architectural Decisions
-- **Event Cancellation**: Uses a lazy-deletion flag (flagging as cancelled) rather than heap removal, ensuring $O(1)$ cancellation vs. $O(n)$ search.
+## 12. Known Architectural Decisions
+- **Event Cancellation**: Uses a lazy-deletion flag ($O(1)$) rather than heap removal, ensuring $O(1)$ cancellation vs. $O(n)$ search.
 - **PRR Modeling**: Uses a continuous BER-based mapping (sigmoid-like) rather than a binary step function, allowing for more realistic "grey zones" in communication.
 - **Energy Tracking**: Stores cumulative energy consumed and time-in-state rather than calculating instantaneous power.
     - **Retroactive RX Accounting**: MAC layer accounts for the physical reception duration by updating the `EnergyModel` state from the packet's end-time back to its start-time, ensuring "Listening" vs. "Receiving" precision.
 - **MAC Backoff**: `CsmaMac` implements a "freeze" mechanism where the backoff counter only decrements when the channel is idle, preventing unfairness in high-traffic scenarios.
 - **Reliability Trade-off**: Empirical analysis confirms that `max_retries=1-3` provides the optimal balance (PDR > 99%) for most scenarios, while higher values lead to diminishing returns and congestion.
-- **Spatial Optimization**: Graph generation from positions uses `scipy.spatial.KDTree` and `sparse_distance_matrix` to achieve $O(N \log N)$ neighbor lookups, avoiding $O(N^2)$ brute-force distance checks for large networks.
-- **Pure Generation**: Topology generators are implemented as pure methods (`generate() -> List[Position]`) without internal state, ensuring that the same configuration can be used to generate multiple realizations if needed, and simplifying testing/verification.
-- **2D Plane Constraint**: All spatial calculations are currently restricted to the 2D plane ($x, y$) for performance and simplicity in basic research scenarios.
+- **Spatial Optimization**: Graph generation from positions uses `scipy.spatial.KDTree` and `sparse_distance_matrix` to achieve $O(N \log N)$ neighbor lookups.
+- **Pure Generation**: Topology generators are implemented as pure methods (`generate() -> List[Position]`) without internal state.
+- **2D Plane Constraint**: All spatial calculations are currently restricted to the 2D plane ($x, y$).
 - **Routing Next Hop**: Routing protocols explicitly set `packet.next_hop` before passing the packet down to the MAC layer. This determines whether the transmission is a unicast (expecting an ACK) or a broadcast (no ACK).
 - **Flooding Cache**: `FloodingRouting` uses a predictable FIFO queue combined with a Set for $O(1)$ lookups to prevent broadcast storms of recently seen packets.
