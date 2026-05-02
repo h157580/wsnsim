@@ -243,3 +243,33 @@
 - `pytest tests/test_energy.py` (6/6 passed).
 - Experiment confirmed a **124.6% energy overhead** for security, while successfully preventing data integrity failures (5 packets processed vs 10 in unsecured mode).
 - Plot generated at `reports/figures/security_tradeoff.png`.
+
+## [2026-05-02] Edge AI: Anomaly Detection and Cross-Validation
+**Goal:** Implement lightweight Edge AI (Z-Score, EWMA) for anomaly detection and perform cross-validation for parameter optimization.
+**Tool:** Gemini CLI, Gemini AI Pro
+**What the AI proposed:**
+- Created `wsnsim/edge_ai.py` with:
+    - **`ZScoreDetector`**: Sliding-window based detection with outlier rejection and standard deviation floor to prevent hyper-sensitivity.
+    - **`EWMADetector`**: Recursive moving average with a configurable `warmup_period` to suppress false positives during initialization.
+    - **`EdgeAIStrategy`**: An `AggregationStrategy` that integrates detectors with ground-truth performance tracking (TP/FP/TN/FN).
+    - **`EdgeAIMetrics`**: Advanced tracking including **Byte Reduction** (accounting for 12-byte headers) and F1-Score.
+- Developed a comprehensive test suite in `tests/test_edge_ai.py` (7/7 passed) covering:
+    - Deterministic detector logic and warmup behavior.
+    - Integration with `SignalGenerator` for statistical verification.
+- Implemented `experiments/cross_validate_detectors.py` featuring:
+    - **Grid Search**: Systematic evaluation of threshold, window, and alpha parameters.
+    - **Statistical Robustness**: 5-seed averaging (10,000 samples per config).
+    - **Automated Reporting**: Generation of `reports/EDGE_AI_VALIDATION.json` and a human-readable `reports/EDGE_AI_SUMMARY.md`.
+    - **Visualization**: Trade-off analysis (Saving vs. FPR) with separate subplots for Z-Score and EWMA.
+
+**What I accepted/changed:**
+- Insisted on **Frozen Dataclasses** for all configurations (`SignalConfig`, `ZScoreConfig`, etc.) to ensure perfect reproducibility.
+- Identified and fixed a hyper-sensitivity "trap" where zero-variance signals caused infinite Z-scores; added a `1e-3` floor to standard deviation.
+- Refined the `EWMADetector` warmup logic to ensure exactly `N` training samples are processed before active detection.
+- Requested separate subplots for trade-off visualization to clearly see the Pareto front for each algorithm.
+
+**Validation:**
+- `pytest tests/test_edge_ai.py` (7/7 passed).
+- **Cross-Validation Result:** `EWMA (Th=6.0, Alpha=0.1)` achieved **F1=0.9922** and **98.0% byte reduction**.
+- Reports and plots generated in `reports/` confirm the energy-saving potential of Edge AI.
+
