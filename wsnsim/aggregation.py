@@ -11,7 +11,7 @@ class AggregationStrategy(ABC):
     """
     
     @abstractmethod
-    def process_data(self, value: float, weight: int = 1) -> Optional[Tuple[float, int, bool]]:
+    def process_data(self, value: float, weight: int = 1) -> Optional[Tuple[Any, int, bool]]:
         """Process a new data point.
         
         Args:
@@ -31,7 +31,7 @@ class AggregationStrategy(ABC):
 class PassthroughStrategy(AggregationStrategy):
     """Raw data transmission: forwards every data point immediately as absolute."""
     
-    def process_data(self, value: float, weight: int = 1) -> Optional[Tuple[float, int, bool]]:
+    def process_data(self, value: float, weight: int = 1) -> Optional[Tuple[Any, int, bool]]:
         return (value, weight, True)
 
     def reset(self):
@@ -64,7 +64,7 @@ class TreeDeltaAvgStrategy(AggregationStrategy):
         self.tx_count: int = 0
         self.is_first_transmission: bool = True
 
-    def process_data(self, value: float, weight: int = 1) -> Optional[Tuple[float, int, bool]]:
+    def process_data(self, value: float, weight: int = 1) -> Optional[Tuple[Any, int, bool]]:
         # Calculate weighted sum for true associativity
         self.weighted_sum += value * weight
         self.total_weight += weight

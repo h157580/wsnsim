@@ -14,6 +14,7 @@ Develop a high-fidelity, discrete-event simulator in Python for research into Wi
 - **topology**: Deployment (Random, Grid, Cluster) and graph-based analysis.
 - **sync_localization**: Clock drift modeling and RSSI-based trilateration.
 - **aggregation**: In-network data aggregation pipeline (e.g., delta-encoding).
+- **federated**: Federated Learning (FedAvg) implementation with memory-efficient online training.
 - **security**: Lightweight security overhead modeling and replay protection.
 - **edge_ai**: Lightweight anomaly detection (Z-Score, EWMA) and data reduction strategies.
 - **common**: Shared types (Position) and utility functions.
@@ -104,3 +105,12 @@ To maximize battery life, the simulator implements on-node intelligence to suppr
 - **2D Plane Constraint**: All spatial calculations are currently restricted to the 2D plane ($x, y$).
 - **Routing Next Hop**: Routing protocols explicitly set `packet.next_hop` before passing the packet down to the MAC layer. This determines whether the transmission is a unicast (expecting an ACK) or a broadcast (no ACK).
 - **Flooding Cache**: `FloodingRouting` uses a predictable FIFO queue combined with a Set for $O(1)$ lookups to prevent broadcast storms of recently seen packets.
+
+## 13. Federated Learning (FedAvg)
+Distributed model training optimized for resource-constrained sensor nodes:
+- **Memory-Efficient Training**: Uses **Online Learning** (incremental SGD) to update model weights sample-by-sample, eliminating the need for RAM-intensive data buffers.
+- **Sparse Updates**: Implements threshold-based transmission suppression. A node only sends its local model to the Sink if the maximum change in weights exceeds the `update_threshold`, significantly saving radio energy.
+- **Amnesia-Free Aggregation**: The `FederatedServer` accounts for silent nodes during FedAvg by incorporating the previous global weights for non-reporting nodes, ensuring stability and preventing "model hijacking" by a few active nodes.
+- **Dynamic Cost Modeling**: The routing layer automatically adjusts packet size based on the model's parameter count (4 bytes per parameter for float32), allowing the `EnergyModel` to calculate realistic transmission costs.
+- **Convergence Metrics**: Uses **Global MSE** (Mean Squared Error) on a separate validation set as a proxy for accuracy, enabling a quantitative analysis of the Energy vs. Quality trade-off.
+- **Synchronization**: Supports a **Download Step** where nodes can be synchronized with the latest global model via downlink messages, preventing local model divergence.

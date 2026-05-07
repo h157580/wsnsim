@@ -273,3 +273,29 @@
 - **Cross-Validation Result:** `EWMA (Th=6.0, Alpha=0.1)` achieved **F1=0.9922** and **98.0% byte reduction**.
 - Reports and plots generated in `reports/` confirm the energy-saving potential of Edge AI.
 
+## [2026-05-07] Federated Learning (FedAvg) and Communication Cost Analysis
+**Goal:** Implement Federated Learning (FedAvg) to enable on-node training and measure the communication-accuracy trade-off.
+**Tool:** Gemini CLI, Gemini AI Pro
+**What the AI proposed:**
+- Created `wsnsim/federated.py` with:
+    - **`FederatedModel`**: NumPy-based weight vector with explicit `size_bytes` calculation for reaslistic radio modeling.
+    - **`FederatedNode`**: Local training logic using **Online Learning** (incremental SGD) to eliminate RAM-intensive buffers.
+    - **`FederatedServer`**: Sink-side aggregation with **Amnesia Prevention** (incorporating silent nodes into the global model).
+    - **`FLCostAnalyzer`**: Comparative tool for calculating bytes and energy between FL and Centralized approaches.
+- Generalised `AggregationStrategy` in `wsnsim/aggregation.py` to support complex payloads (like `FederatedModel`) instead of just floats.
+- Updated `AggregatingTreeRouting` to dynamically adjust packet sizes based on the model's parameter count.
+- Developed `experiments/evaluate_fl_tradeoffs.py` to visualize the Pareto front between `update_period` and global MSE.
+- Implemented a comprehensive test suite in `tests/test_federated.py` (5/5 passed).
+
+**What I accepted/changed:**
+- **Mathematical Correction:** Fixed the "Dimension Anomaly" by replacing scalar broadcasting with a proper linear regression (weights * features) model.
+- **Distributed Logic Correction:** Identified the missing "Download Step" (global sync) and added `set_weights` to allow nodes to receive the aggregated model.
+- **Amnesia Fix:** Refactored the server to treat silent nodes (due to Sparse Updates) as still holding the previous global weights, preventing model hijacking by active nodes.
+- **Sparse Update:** Added a threshold-based mechanism to suppress model transmissions if the weight change is insignificant, further saving energy.
+- **Resource Optimization:** Optimized `FederatedNode` for WSN hardware by removing the sample buffer and switching to pure online SGD.
+
+**Validation:**
+- `pytest tests/test_federated.py` (5/5 passed).
+- Experiment confirmed a **29.3x reduction in communication costs** (21 KB vs 625 KB) using FL with `update_period=100`, while maintaining a comparable MSE (~9.15).
+- Plot generated at `reports/figures/fl_update_period_tradeoff.png` clearly visualizes the trade-off between aggregation frequency and model quality.
+

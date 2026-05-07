@@ -168,6 +168,14 @@ class AggregatingTreeRouting(TreeRouting):
             packet.payload = payload
             packet.sample_weight = total_weight
             packet.is_absolute = is_absolute
+            
+            # Update packet size for accurate communication cost modeling
+            # Check if payload is a complex object with its own size (e.g., FederatedModel)
+            if hasattr(payload, "size_bytes"):
+                packet.size_bytes = 12 + payload.size_bytes # Header + payload
+            elif isinstance(payload, (float, int)):
+                packet.size_bytes = 12 + 4 # Header + float32
+            
             return super().forward(packet)
         
         # Suppressed (buffered or threshold-filtered)
