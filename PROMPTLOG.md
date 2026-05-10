@@ -273,29 +273,30 @@
 - **Cross-Validation Result:** `EWMA (Th=6.0, Alpha=0.1)` achieved **F1=0.9922** and **98.0% byte reduction**.
 - Reports and plots generated in `reports/` confirm the energy-saving potential of Edge AI.
 
-## [2026-05-07] Federated Learning (FedAvg) and Communication Cost Analysis
-**Goal:** Implement Federated Learning (FedAvg) to enable on-node training and measure the communication-accuracy trade-off.
+## [2026-05-10] Design Space Exploration and Optimization Framework
+**Goal:** Implement a comprehensive framework for parameter sweeps, multi-objective optimization (Pareto-front), and sensitivity analysis.
 **Tool:** Gemini CLI, Gemini AI Pro
 **What the AI proposed:**
-- Created `wsnsim/federated.py` with:
-    - **`FederatedModel`**: NumPy-based weight vector with explicit `size_bytes` calculation for reaslistic radio modeling.
-    - **`FederatedNode`**: Local training logic using **Online Learning** (incremental SGD) to eliminate RAM-intensive buffers.
-    - **`FederatedServer`**: Sink-side aggregation with **Amnesia Prevention** (incorporating silent nodes into the global model).
-    - **`FLCostAnalyzer`**: Comparative tool for calculating bytes and energy between FL and Centralized approaches.
-- Generalised `AggregationStrategy` in `wsnsim/aggregation.py` to support complex payloads (like `FederatedModel`) instead of just floats.
-- Updated `AggregatingTreeRouting` to dynamically adjust packet sizes based on the model's parameter count.
-- Developed `experiments/evaluate_fl_tradeoffs.py` to visualize the Pareto front between `update_period` and global MSE.
-- Implemented a comprehensive test suite in `tests/test_federated.py` (5/5 passed).
+- Created `wsnsim/optimization.py` featuring:
+    - **`DesignSpace`**: Grid generation for parameter combinations with deterministic random sampling and a **`save_config`** method for JSON parameter dumps.
+    - **`SweepRunner`**: Parallelized simulation execution using `ProcessPoolExecutor` with automated results aggregation across stochastic repetitions.
+    - **`identify_pareto`**: Implementation of $\epsilon$-dominance (tolerance-based filtering) to identify robust multi-objective trade-offs.
+    - **`calculate_sensitivity`**: Utility to quantify the local impact of parameters on target metrics (e.g., Energy vs. Duty Cycle).
+- Developed `tests/test_optimization.py` with 5 cases verifying grid logic, sampling, Pareto filtering (strict and tolerant), and parallel execution.
+- Created `experiments/wsn_optimization_demo.py`, a high-density (2500 runs) experiment visualizing the Energy vs. PDR Pareto-front with English localization and automated reporting.
+- Enforced bit-for-bit reproducibility across runs by systematic seeding of all random components.
 
 **What I accepted/changed:**
-- **Mathematical Correction:** Fixed the "Dimension Anomaly" by replacing scalar broadcasting with a proper linear regression (weights * features) model.
-- **Distributed Logic Correction:** Identified the missing "Download Step" (global sync) and added `set_weights` to allow nodes to receive the aggregated model.
-- **Amnesia Fix:** Refactored the server to treat silent nodes (due to Sparse Updates) as still holding the previous global weights, preventing model hijacking by active nodes.
-- **Sparse Update:** Added a threshold-based mechanism to suppress model transmissions if the weight change is insignificant, further saving energy.
-- **Resource Optimization:** Optimized `FederatedNode` for WSN hardware by removing the sample buffer and switching to pure online SGD.
+- Requested an explicit **aggregation step** before Pareto filtering to prevent "lucky seeds" from dominating the results.
+- Insisted on **English localization** for all code, comments, and plots.
+- Fine-tuned the **Pareto density** by adjusting the $\epsilon$-dominance threshold to achieve a targeted number of optimal points (~50).
+- Fixed a non-determinism in the initial sampling logic by adding `random.seed(seed_base)` before selecting parameter combinations.
+- Added a **`save_config`** feature to dump the experimental design space to `optimization_config.json`.
+- Integrated **Sensitivity Analysis** into the demo to quantify the impact of TX Power vs. Duty Cycle on Energy.
 
 **Validation:**
-- `pytest tests/test_federated.py` (5/5 passed).
-- Experiment confirmed a **29.3x reduction in communication costs** (21 KB vs 625 KB) using FL with `update_period=100`, while maintaining a comparable MSE (~9.15).
-- Plot generated at `reports/figures/fl_update_period_tradeoff.png` clearly visualizes the trade-off between aggregation frequency and model quality.
+- `pytest tests/test_optimization.py` (5/5 passed).
+- **Reproducibility Test:** Bit-for-bit identical results confirmed across two independent 2500-task runs (verified via log diff).
+- Visualization at `reports/figures/wsn_pareto_plot.png` correctly illustrates the "knee" of the Energy-Reliability curve.
+- **DoD Met:** Sweep + Pareto selection + Config dump + Reproducibility checklist completed.
 

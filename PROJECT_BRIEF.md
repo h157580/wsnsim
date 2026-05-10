@@ -1,23 +1,13 @@
-# PROJECT BRIEF: wsnsim
+# PROJECT BRIEF: Wireless Sensor Network (WSN) Simulator
 
-## 1. Project Goal
-Develop a high-fidelity, discrete-event simulator in Python for research into Wireless Sensor Network (WSN) protocols. The simulator prioritizes reproducibility, modularity, and precise energy modeling for resource-constrained environments.
+## 1. Project Overview
+A Discrete-Event Simulator (DES) for researching energy-efficient protocols, data aggregation, and Edge AI in Wireless Sensor Networks.
 
-## 2. Modules
-- **sim**: Core DES engine (Event, Queue, Scheduler).
-- **node**: Orchestrator composing hardware/protocol modules into a single entity.
-- **application**: Generates traffic patterns (CBR, Poisson, Event-driven).
-- **phy/channel**: Signal propagation, interference, and hardware state transitions.
-- **energy**: Battery modeling and consumption tracking (J = mW/1000 * s).
-- **mac**: ALOHA, CSMA/CA with exponential backoff.
-- **routing**: flooding + tree routing.
-- **topology**: Deployment (Random, Grid, Cluster) and graph-based analysis.
-- **sync_localization**: Clock drift modeling and RSSI-based trilateration.
-- **aggregation**: In-network data aggregation pipeline (e.g., delta-encoding).
-- **federated**: Federated Learning (FedAvg) implementation with memory-efficient online training.
-- **security**: Lightweight security overhead modeling and replay protection.
-- **edge_ai**: Lightweight anomaly detection (Z-Score, EWMA) and data reduction strategies.
-- **common**: Shared types (Position) and utility functions.
+## 2. Radio Channel Model
+Stochastic modeling of signal propagation and interference:
+- **Log-Distance Path Loss**: Models signal attenuation over distance using the path loss exponent ($\eta$).
+- **Log-Normal Shadowing**: Captures environmental variability using a Gaussian distribution in the dB domain ($\sigma$).
+- **Packet Reception Ratio (PRR)**: Calculates delivery probability based on Signal-to-Noise Ratio (SNR) and modulation parameters.
 
 ## 3. MAC Layer Strategy
 Selection of the MAC protocol impacts network throughput and energy efficiency:
@@ -49,25 +39,22 @@ The simulator supports varied deployment scenarios to evaluate protocol performa
 ## 5. Clock Synchronization & Localization
 Precise time and spatial awareness are critical for advanced WSN features:
 - **SyncClock**: Simulates local oscillators with constant ppm (parts per million) drift and initial offsets.
-- **Localization**:
-    - **RSSI-based Distance Estimation**: Back-calculates distance using the log-distance path loss model.
-    - **Trilateration**: Least Squares (LS) based 2D position estimation using linearized equations from anchors.
-    - **DOP Analysis**: Modeling the Dilution of Precision to highlight how anchor geometry impacts accuracy.
+- **RSSI Localization**: Estimates node positions using anchor nodes and trilateration. Uses Least Squares (LS) optimization for 2D coordinate discovery.
+- **DOP Analysis**: Includes Dilution of Precision checks to quantify how anchor geometry impacts error sensitivity.
 
-## 6. In-Network Data Aggregation
-Reduces traffic volume by combining data from multiple nodes along the routing tree:
-- **Weighted Averaging**: Ensures mathematical associativity in multi-hop trees via `sample_weight`.
-- **Delta-encoding**: Transmits only the difference from the last reported value.
-- **Threshold-based Suppression**: Discards updates if the change is below a deadband value ($T$).
-- **Periodic Reset**: Sends absolute values every $R$ transmissions to prevent cumulative drift.
+## 6. Data Aggregation
+In-network processing to reduce data volume and radio usage:
+- **Tree-based Aggregation**: Hierarchical flow where intermediate nodes combine data from children.
+- **Delta Encoding**: Transmitting only changes between samples to minimize payload size.
+- **Weight Awareness**: Propagates sample counts through the tree to ensure mathematically accurate weighted averages across multiple hops.
 
-## 7. WSN Security & Overhead
-Provides a realistic model of security costs in resource-constrained networks:
-- **Overhead Model**: Accounts for CPU energy tax (crypto operations) and packet size increase (signatures, nonces).
-- **Replay Protection**: Uses strictly increasing nonces to prevent attackers from re-injecting valid historical packets.
-- **Energy Integrity**: "Death guards" ensure that nodes stop all physical activity when the battery is exhausted, preventing "zombie" states caused by heavy crypto overhead.
+## 7. Security Model
+Balanced approach between data protection and resource constraints:
+- **Replay Protection**: Uses monotonic nonces (counters) to prevent malicious packet re-injection.
+- **Overhead Analysis**: Explicitly models the energy cost of CPU-bound cryptographic operations and the increased radio cost due to security headers.
+- **Integrity Guards**: MAC-level verification ensuring only authenticated packets are processed by higher layers.
 
-## 8. Edge AI & Data Reduction
+## 8. Edge AI & Anomaly Detection
 To maximize battery life, the simulator implements on-node intelligence to suppress redundant transmissions:
 - **Detectors**:
     - **Z-Score**: Sliding-window based approach with standard deviation floor to prevent hyper-sensitivity on perfectly stable signals.
@@ -88,25 +75,7 @@ To maximize battery life, the simulator implements on-node intelligence to suppr
 - **RNG**: Components must accept a `numpy.random.Generator` instance (using `seed`) for isolated, reproducible randomness. Seed param for every RNG.
 - **Quality**: `pytest` suite required for all modules; Google-style docstrings.
 
-## 11. Definition of Done
-- Green `pytest` suite with >80% coverage.
-- Google-style docstrings and type-annotated parameters.
-- Updated `PROMPTLOG.md` for every major feature/fix.
-
-## 12. Known Architectural Decisions
-- **Event Cancellation**: Uses a lazy-deletion flag ($O(1)$) rather than heap removal, ensuring $O(1)$ cancellation vs. $O(n)$ search.
-- **PRR Modeling**: Uses a continuous BER-based mapping (sigmoid-like) rather than a binary step function, allowing for more realistic "grey zones" in communication.
-- **Energy Tracking**: Stores cumulative energy consumed and time-in-state rather than calculating instantaneous power.
-    - **Retroactive RX Accounting**: MAC layer accounts for the physical reception duration by updating the `EnergyModel` state from the packet's end-time back to its start-time, ensuring "Listening" vs. "Receiving" precision.
-- **MAC Backoff**: `CsmaMac` implements a "freeze" mechanism where the backoff counter only decrements when the channel is idle, preventing unfairness in high-traffic scenarios.
-- **Reliability Trade-off**: Empirical analysis confirms that `max_retries=1-3` provides the optimal balance (PDR > 99%) for most scenarios, while higher values lead to diminishing returns and congestion.
-- **Spatial Optimization**: Graph generation from positions uses `scipy.spatial.KDTree` and `sparse_distance_matrix` to achieve $O(N \log N)$ neighbor lookups.
-- **Pure Generation**: Topology generators are implemented as pure methods (`generate() -> List[Position]`) without internal state.
-- **2D Plane Constraint**: All spatial calculations are currently restricted to the 2D plane ($x, y$).
-- **Routing Next Hop**: Routing protocols explicitly set `packet.next_hop` before passing the packet down to the MAC layer. This determines whether the transmission is a unicast (expecting an ACK) or a broadcast (no ACK).
-- **Flooding Cache**: `FloodingRouting` uses a predictable FIFO queue combined with a Set for $O(1)$ lookups to prevent broadcast storms of recently seen packets.
-
-## 13. Federated Learning (FedAvg)
+## 11. Federated Learning (FedAvg)
 Distributed model training optimized for resource-constrained sensor nodes:
 - **Memory-Efficient Training**: Uses **Online Learning** (incremental SGD) to update model weights sample-by-sample, eliminating the need for RAM-intensive data buffers.
 - **Sparse Updates**: Implements threshold-based transmission suppression. A node only sends its local model to the Sink if the maximum change in weights exceeds the `update_threshold`, significantly saving radio energy.
@@ -114,3 +83,24 @@ Distributed model training optimized for resource-constrained sensor nodes:
 - **Dynamic Cost Modeling**: The routing layer automatically adjusts packet size based on the model's parameter count (4 bytes per parameter for float32), allowing the `EnergyModel` to calculate realistic transmission costs.
 - **Convergence Metrics**: Uses **Global MSE** (Mean Squared Error) on a separate validation set as a proxy for accuracy, enabling a quantitative analysis of the Energy vs. Quality trade-off.
 - **Synchronization**: Supports a **Download Step** where nodes can be synchronized with the latest global model via downlink messages, preventing local model divergence.
+
+## 12. Design Space Exploration (DSE) & Optimization
+Systematic evaluation of protocol parameters to find optimal trade-offs:
+- **Deterministic Sweeps**: All parameter sampling MUST be reproducible via a fixed seed set before grid selection.
+- **Aggregation**: Multi-objective optimization (Pareto) MUST be performed on results averaged across repetitions to filter out stochastic noise.
+- **Epsilon-Dominance**: Employs tolerant Pareto filtering to identify robust design regions rather than isolated, noise-sensitive optimums.
+- **Traceability**: Automated configuration dump (JSON) of the design space is mandatory for every optimization run.
+- **Sensitivity Metrics**: Quantifies local gradients to identify which parameters (e.g., Duty Cycle vs. TX Power) are the primary drivers of network performance.
+
+## 13. Definition of Done
+- [x] Discrete-Event Simulator (DES) kernel with stable event ordering.
+- [x] Radio Channel Model (Path Loss, Shadowing, PRR).
+- [x] Energy Model with hardware state tracking and "time-of-death" calculation.
+- [x] MAC Layer (ALOHA, CSMA/CA) with collision modeling and ARQ.
+- [x] Topology Generators (Random, Grid, Cluster) with optimized spatial graph generation.
+- [x] In-Network Data Aggregation (Delta-encoding, Tree-based weighting).
+- [x] Security Model (Overhead modeling, Replay protection).
+- [x] Edge AI (Anomaly Detection, Cross-validation).
+- [x] Federated Learning (FedAvg) with sparse model updates.
+- [x] **DSE Framework**: Functional sweep runner, Pareto selection, and Sensitivity analysis.
+- [x] **Full Reproducibility**: Bit-for-bit consistency verified across runs for all optimization tasks.
