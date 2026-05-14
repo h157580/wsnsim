@@ -85,8 +85,8 @@ def main():
     plt.title("Energy vs. Reliability Pareto-front (2D Focus)")
     plt.legend()
     plt.grid(True, linestyle=':', alpha=0.6)
-    plt.savefig("reports/figures/wsn_pareto_plot.png")
-    print("Plot saved: reports/figures/wsn_pareto_plot.png")
+    plt.savefig("reports/figures/presentation/wsn_pareto_plot.png")
+    print("Plot saved: reports/figures/presentation/wsn_pareto_plot.png")
 
     # 4. Sensitivity Analysis
     print("\n=== Sensitivity Analysis ===")

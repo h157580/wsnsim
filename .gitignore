@@ -4,5 +4,7 @@ __pycache__/
 .pytest_cache/
 *.pyc
 .DS_Store
+# Figures
 reports/figures/*.png
+!reports/figures/presentation/*.png
 .vscode/

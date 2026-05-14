@@ -300,3 +300,26 @@
 - Visualization at `reports/figures/wsn_pareto_plot.png` correctly illustrates the "knee" of the Energy-Reliability curve.
 - **DoD Met:** Sweep + Pareto selection + Config dump + Reproducibility checklist completed.
 
+## [2026-05-14] Project Finalization and Case Study Development
+**Goal:** Finalize the wsnsim project, document a Forest Fire Case Study, and justify design points via Pareto optimality.
+**Tool:** Gemini CLI
+**What the AI proposed:**
+- Developed `experiments/case_study_demo.py`: A high-fidelity DSE (Design Space Exploration) focused on a Forest Fire scenario.
+- Implemented a physics-grounded **Energy Model** with Joules (J) units and hardware-specific constants (TX efficiency, base power).
+- Identified the **Optimal Design Point** (11mW TX Power, 16.3% Duty Cycle) by applying safety constraints (PDR > 90%, Latency < 60s) to the Pareto front.
+- Created a comprehensive **Evidence-Based Presentation** in `PRESENTATION.md` with integrated plots and figures.
+- Standardized documentation: Finalized `README.md` (Quick Start, Modules, Reproducibility) and added `reports/CASE_STUDY_ANALYSIS.md`.
+- Automated evaluation: Created `run_evaluation.sh` for one-command verification (tests + demo).
+- Organized assets: Moved presentation-critical Pareto plots to `reports/figures/presentation/` and updated `.gitignore` to preserve them.
+
+**What I accepted/changed:**
+- Insisted on **English localization** for the final presentation and README.
+- Corrected a binary incompatibility issue (Numpy/Pandas version mismatch) by removing redundant pandas dependencies in the demo.
+- Added explicit **Joules [J]** units to all plots and documentation for scientific clarity.
+- Refined the hardware recommendations to include specific, commercially available components (Nordic nRF52840, Saft batteries).
+
+**Validation:**
+- `pytest` (65/65 passed).
+- **Bit-perfect Reproducibility:** Verified that the Case Study finds the exact same optimal point (11mW, 16.3% DC) across multiple runs.
+- **One-Command Review:** `./run_evaluation.sh` successfully executes the entire quality gate and analysis pipeline.
+- **Final Status:** Project meets all "Definition of Done" criteria.

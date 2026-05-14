@@ -39,15 +39,16 @@ def reconstruct_signal(n_samples: int, transmissions: List[Tuple[int, float]], i
 
     for i in range(n_samples):
         if tx_idx < len(transmissions) and transmissions[tx_idx][0] == i:
-            tx_time, payload = transmissions[tx_idx]
+            tx_time, payload_tuple = transmissions[tx_idx]
+            val, weight, is_abs = payload_tuple # Payload is (value, weight, is_absolute)
+            
             if is_delta:
-                # Our implementation: first is absolute, rest are deltas
-                if tx_idx == 0:
-                    current_value = payload
+                if is_abs:
+                    current_value = val
                 else:
-                    current_value += payload
+                    current_value += val
             else:
-                current_value = payload
+                current_value = val
             tx_idx += 1
         
         reconstructed[i] = current_value
