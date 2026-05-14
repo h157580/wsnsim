@@ -22,7 +22,7 @@ class SimNode:
         self.tx_power_mw = tx_power_mw
         self.energy = EnergyModel(energy_config, RadioState.IDLE, scheduler.current_time)
         self.mac = CsmaMac(node_id, scheduler, rng, mac_config, channel, self.energy)
-        self.mac.on_receive = self.receive_packet
+        self.mac.on_receive_data = self.receive_packet
         self.routing = FloodingRouting(node_id) if strategy == "flooding" else TreeRouting(node_id)
         self.sent_count = 0
         self.received_count = 0
@@ -68,11 +68,21 @@ class SimpleGlobalChannel:
             dist = self.positions[src_id].distance_to(self.positions[other_id])
             if self.model.is_received(tx_power_mw, dist):
                 if dest_id == -1 or dest_id == other_id:
-                    pkt_copy = Packet(packet.src, packet.dest, packet.payload, packet.packet_id, 
-                                      packet.ttl, packet.next_hop, packet.hop_count)
-                    other_node.scheduler.schedule(duration, other_node.mac.on_receive, pkt_copy)
-                    if dest_id == other_id:
-                        other_node.scheduler.schedule(duration + 0.002, self.nodes[src_id].mac.on_ack)
+                    pkt_copy = Packet(
+                        src=packet.src,
+                        dest=packet.dest,
+                        payload=packet.payload,
+                        packet_id=packet.packet_id,
+                        ttl=packet.ttl,
+                        next_hop=packet.next_hop,
+                        hop_count=packet.hop_count,
+                        is_ack=packet.is_ack,
+                        is_absolute=packet.is_absolute,
+                        sample_weight=packet.sample_weight,
+                        nonce=packet.nonce,
+                        size_bytes=packet.size_bytes
+                    )
+                    other_node.scheduler.schedule(duration, other_node.mac.receive, pkt_copy, duration)
 
 def run_sim(strategy: str, area_size: float, seed: int):
     rng = np.random.default_rng(seed)

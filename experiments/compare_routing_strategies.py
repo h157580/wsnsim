@@ -45,7 +45,7 @@ class SimNode:
         
         # 2. MAC Layer
         self.mac = CsmaMac(node_id, scheduler, rng, mac_config, channel, self.energy)
-        self.mac.on_receive = self.receive_packet
+        self.mac.on_receive_data = self.receive_packet
         
         # 3. Routing Layer
         if routing_strategy == "flooding":
@@ -151,13 +151,14 @@ class SimpleGlobalChannel:
                         packet_id=packet.packet_id,
                         ttl=packet.ttl,
                         next_hop=packet.next_hop,
-                        hop_count=packet.hop_count
+                        hop_count=packet.hop_count,
+                        is_ack=packet.is_ack,
+                        is_absolute=packet.is_absolute,
+                        sample_weight=packet.sample_weight,
+                        nonce=packet.nonce,
+                        size_bytes=packet.size_bytes
                     )
-                    other_node.scheduler.schedule(duration, other_node.mac.on_receive, pkt_copy)
-                    
-                    # If this was a unicast packet for 'other_node', simulate an ACK
-                    if dest_id == other_id:
-                        other_node.scheduler.schedule(duration + 0.002, self.nodes[src_id].mac.on_ack)
+                    other_node.scheduler.schedule(duration, other_node.mac.receive, pkt_copy, duration)
 
 def run_simulation(strategy: str, seed: int, num_packets: int = 1, tx_power_mw: float = 1.0, area_size: float = 300.0):
     """Runs a single simulation scenario."""
