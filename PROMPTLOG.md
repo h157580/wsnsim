@@ -3,6 +3,7 @@
 ## [2026-03-02] Project Setup and DES EventScheduler
 **Goal:** Create DES EventScheduler
 **Tool:** Gemini CLI (all phases)
+
 **What the AI proposed:**
 - Initialized the project structure (`wsnsim/`, `tests/`, `reports/figures/`, `GEMINI.md`, `requirements.txt`).
 - Set up a Python 3.11+ virtual environment.
@@ -14,10 +15,12 @@
 1. My system used Python 3.10 by default, changed to 3.11.
 2. I had to ask explicitly to generate the `__lt__()` function for the `Event` class to ensure transparent stable ordering.
 
-**Validation:** pytest 5/5 green (including `test_run_until`).
+**Validation:**
+- pytest 5/5 green (including `test_run_until`).
 
 ## [2026-03-02] Q&A Summary: wsnsim/sim.py
 **Prompt:** Quiz me about the code you just wrote (5 questions).
+
 **Outcome:**
 1. **__lt__ with (time, seq):** Confirmed as the way to provide stable ordering.
 2. **Equal Timestamps:** Tie-breaking is done based on the sequence number.
@@ -28,6 +31,7 @@
 ## [2026-03-04] Radio Channel Model and PRR Calculations
 **Goal:** Create module 'channel' (PRR calculations).
 **Tool:** Gemini CLI + Gemini Pro.
+
 **What the AI proposed:**
 - `ChannelModel` with log-distance path loss, log-normal shadowing, and PRR calculation.
 - Initial proposal had inconsistent units (dBm/mW mix).
@@ -40,25 +44,25 @@
 - Corrected unit handling in `calculate_prr`.
 - Updated experiments to support CLI-based table output as well as Matplotlib.
 
-**Validation:** 
+**Validation:**
 - `pytest tests/test_channel.py` is all green (7/7 tests passed).
 - Manual validation against numerical points (PRR=0.0308 at 10m, -25dBm).
-
 
 ## [2026-03-07] Energy Model Refinement and Lifetime Analysis
 **Goal:** Finalize `energy.py` and analyze WSN node lifetime.
 **Tool:** Gemini CLI, Gemini Code Assist, Gemini AI Pro
+
 **What the AI proposed:**
 - Refactored `EnergyModel.update_state` to accurately calculate the "time of death" if a node runs out of energy mid-interval.
 - Fixed a critical bug where the last time-slice before battery exhaustion was being lost in metrics.
 - Implemented a formal `pytest` suite in `tests/test_energy.py` with 6 cases covering scenarios like wakeup costs, mid-interval death, and time-sum consistency.
 - Created `experiments/plot_lifetime_dutycycle.py` to visualize the exponential impact of duty cycling on battery life.
-- Using cross validation between AI tools, the update_state() function was fine tuned to evade the egde cases.
+- Using cross validation between AI tools, the `update_state()` function was fine tuned to evade the edge cases.
+
 **What I accepted/changed:**
 - Explicitly requested a "negative energy guard" and "sanity check" for total time consistency in the tests.
 - Adjusted test assertions to use `pytest.approx` to handle floating-point precision issues in time-tracking.
 - Verified unit conversions: mW for power, mJ for transitions, Joules for capacity.
-
 
 **Validation:**
 - `pytest tests/` (17/17 passed).
@@ -66,12 +70,13 @@
 - Plot generated at `reports/figures/lifetime_vs_dutycycle.png`.
 
 ## [2026-03-10] MAC Protocol Implementation and Collision Analysis
-**Goal:** Implement ALOHA MAC (send at will) & CSMA backoff (carrier sense + random backoff) modules. Provide the possibility to configure slot, cwmin, cwmax. Write deterministic tests with 2  node, verify & handle collisions. Document the seed for testing.
+**Goal:** Implement ALOHA MAC (send at will) & CSMA backoff (carrier sense + random backoff) modules. Provide the possibility to configure slot, cwmin, cwmax. Write deterministic tests with 2 nodes, verify & handle collisions. Document the seed for testing.
 **Tool:** Gemini CLI, Gemini AI Pro
+
 **What the AI proposed:**
 - Refined `CsmaMac` in `wsnsim/mac.py` to include reliable ACK timeout and retransmission logic.
 - Implemented a "Freeze" mechanism for CSMA/CA where the backoff counter pauses during channel activity.
-- Using cross validation between AI tools
+- Using cross validation between AI tools.
 - Created a `DeterministicChannel` in `tests/test_mac.py` to strictly control transmission overlaps for validation.
 - Developed three key test cases:
     - `test_pure_aloha_collision`: Confirmed nodes collide if they overlap by even a small margin.
@@ -92,6 +97,7 @@
 ## [2026-03-20] Topology Generators and Spatial Optimization
 **Goal:** Implement topology generators (Random, Grid, Cluster) with NetworkX visualization and optimized spatial graph generation.
 **Tool:** Gemini CLI
+
 **What the AI proposed:**
 - Created `wsnsim/common.py` with a 2D `Position` dataclass.
 - Implemented `RandomTopology`, `GridTopology`, and `ClusterTopology` in `wsnsim/topology.py`.
@@ -105,6 +111,7 @@
 - Refactored `ClusterTopology` from a sequential head assignment to a stochastic one for more natural distributions.
 - Resolved dependency issues (`typing_extensions`, `pytest`, `scipy`) in the local environment to support KDTree and type checking.
 - Optimized `to_graph` using `scipy.spatial.KDTree` and `sparse_distance_matrix` to achieve $O(N \log N)$ performance and avoid redundant distance recomputations.
+
 **Validation:**
 - `pytest tests/test_topology.py` is all green (5/5 tests passed).
 - Total project tests: 25/25 passed.
@@ -113,6 +120,7 @@
 ## [2026-03-21] Topology Connectivity and Visualization Refinement
 **Goal:** Implement connectivity metrics, reproducibility verification, and enhanced visualization.
 **Tool:** Gemini CLI
+
 **What the AI proposed:**
 - Added `get_connectivity_metrics()` to the `Topology` class to provide graph-theoretic analysis (Sink Reachability, Average Degree, Component Count).
 - Refined `_create_plot` in `wsnsim/topology.py`:
@@ -136,6 +144,7 @@
 
 ## [2026-03-22] Q&A Summary: wsnsim/topology.py
 **Prompt:** Q&A session to confirm understanding of the topology module.
+
 **Outcome (Completed):**
 1. **Performance:** KDTree optimizes neighbor finding from $O(N^2)$ to $O(N \log N)$ for large networks.
 2. **Connectivity:** Sink reachability is emphasized because it measures data delivery potential to the sink (node 0) rather than requiring every single node to be globally connected.
@@ -146,6 +155,7 @@
 ## [2026-04-07] Reliability, ARQ and Energy Trade-off
 **Goal:** Implement Link-Layer ARQ (ACK + Stop-and-Wait Retry) and analyze the energy cost of reliability.
 **Tool:** Gemini CLI, Gemini AI Pro
+
 **What the AI proposed:**
 - Updated `Packet` in `common.py` with `is_ack` flag and sequence numbers.
 - Refactored `BaseMac` in `mac.py` to handle:
@@ -169,6 +179,7 @@
 ## [2026-04-20] Clock Drift Simulation and Trilateration Localization
 **Goal:** Implement clock drift modeling (ppm) and RSSI-based trilateration for node localization.
 **Tool:** Gemini CLI, Gemini AI Pro
+
 **What the AI proposed:**
 - Created `wsnsim/sync_localization.py` with:
     - `SyncClock`: Simulates local node clocks with a constant ppm drift and offset.
@@ -193,7 +204,8 @@
 
 ## [2026-04-21] In-Network Data Aggregation and Robust Compression
 **Goal:** Implement a modular data aggregation pipeline with Delta-encoding and robust tree-based weighting.
-**Tool:** Gemini CLI, Gemini AI Pro 
+**Tool:** Gemini CLI, Gemini AI Pro
+
 **What the AI proposed:**
 - Created `wsnsim/aggregation.py` with an abstract `AggregationStrategy` interface.
 - Implemented `TreeDeltaAvgStrategy` featuring:
@@ -220,6 +232,7 @@
 ## [2026-04-26] WSN Security: Overhead Modeling and Replay Protection
 **Goal:** Implement a lightweight security overhead model and nonce-based replay protection.
 **Tool:** Gemini CLI
+
 **What the AI proposed:**
 - Updated `Packet` in `common.py` with `nonce` and `size_bytes` fields.
 - Created `wsnsim/security.py` with a `SecurityModel` to handle signing/verification and track energy/latency/size overhead.
@@ -247,6 +260,7 @@
 ## [2026-05-02] Edge AI: Anomaly Detection and Cross-Validation
 **Goal:** Implement lightweight Edge AI (Z-Score, EWMA) for anomaly detection and perform cross-validation for parameter optimization.
 **Tool:** Gemini CLI, Gemini AI Pro
+
 **What the AI proposed:**
 - Created `wsnsim/edge_ai.py` with:
     - **`ZScoreDetector`**: Sliding-window based detection with outlier rejection and standard deviation floor to prevent hyper-sensitivity.
@@ -276,6 +290,7 @@
 ## [2026-05-10] Design Space Exploration and Optimization Framework
 **Goal:** Implement a comprehensive framework for parameter sweeps, multi-objective optimization (Pareto-front), and sensitivity analysis.
 **Tool:** Gemini CLI, Gemini AI Pro
+
 **What the AI proposed:**
 - Created `wsnsim/optimization.py` featuring:
     - **`DesignSpace`**: Grid generation for parameter combinations with deterministic random sampling and a **`save_config`** method for JSON parameter dumps.
@@ -303,6 +318,7 @@
 ## [2026-05-14] Project Finalization and Case Study Development
 **Goal:** Finalize the wsnsim project, document a Forest Fire Case Study, and justify design points via Pareto optimality.
 **Tool:** Gemini CLI
+
 **What the AI proposed:**
 - Developed `experiments/case_study_demo.py`: A high-fidelity DSE (Design Space Exploration) focused on a Forest Fire scenario.
 - Implemented a physics-grounded **Energy Model** with Joules (J) units and hardware-specific constants (TX efficiency, base power).
