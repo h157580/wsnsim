@@ -5,6 +5,7 @@ __pycache__/
 *.pyc
 .DS_Store
 # Figures
-reports/figures/*.png
+# reports/figures/*.png  <-- Removed ignore to include experiment results
+!reports/figures/*.png
 !reports/figures/presentation/*.png
 .vscode/

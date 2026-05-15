@@ -19,16 +19,6 @@ The evaluation process generates data and plots in the following locations:
 - **Analysis Reports:** `reports/*.md` (Detailed summaries for Edge AI, Aggregation, and Case Studies).
 - **Configuration:** `reports/optimization_config.json` (Traceability for simulation parameters).
 
-### Visual Evidence & Module Verification
-| Domain | Metric / Trade-off | Visualization |
-| :--- | :--- | :--- |
-| **Optimization** | Pareto Front (Energy vs Reliability) | ![Pareto](reports/figures/presentation/wsn_pareto_plot.png) |
-| **Routing** | Strategy Comparison (PDR vs Distance) | ![Routing](reports/figures/routing_comparison_sweep.png) |
-| **Edge AI** | Detection Accuracy vs Data Savings | ![Edge AI](reports/figures/edge_ai_tradeoff.png) |
-| **Federated Learning** | Update Period vs Energy/Convergence | ![FL](reports/figures/fl_update_period_tradeoff.png) |
-| **Security** | Reliability under Replay Attack | ![Security](reports/figures/security_tradeoff.png) |
-| **Spatio-temporal** | Localization Error vs Signal Noise | ![Localization](reports/figures/localization_error_vs_noise.png) |
-
 ## What are we simulating?
 - **Scenario:** Forest Fire Detection. A dense network of sensors monitoring temperature and gas spikes in a high-shadowing environment (foliage).
 - **Network:** Cluster-based topology with multi-hop tree routing to a central Sink.
