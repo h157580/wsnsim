@@ -1,6 +1,6 @@
 # Edge AI Detector Cross-Validation Summary
 
-*Generated on: 2026-05-14 21:22:17*
+*Generated on: 2026-05-15 17:55:01*
 
 ## Experiment Configuration
 - **Seeds:** `[42, 57, 101, 202, 303]`

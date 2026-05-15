@@ -7,13 +7,17 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# Run quality gate (65 tests)
-pytest -q
-
-# Run the Forest Fire Case Study (Pareto Optimization)
-export PYTHONPATH=$PYTHONPATH:.
-python3 experiments/case_study_demo.py
+# Run the full evaluation suite (Tests -> Module Experiments -> Case Study)
+chmod +x run_evaluation.sh
+./run_evaluation.sh
 ```
+
+## Results & Visualization
+The evaluation process generates data and plots in the following locations:
+- **Plots & Figures:** `reports/figures/presentation/` (e.g., Pareto fronts, trade-off curves).
+- **Raw Data:** `reports/` (CSV files for sweeps and aggregated results).
+- **Analysis Reports:** `reports/*.md` (Detailed summaries for Edge AI, Aggregation, and Case Studies).
+- **Configuration:** `reports/optimization_config.json` (Traceability for simulation parameters).
 
 ## What are we simulating?
 - **Scenario:** Forest Fire Detection. A dense network of sensors monitoring temperature and gas spikes in a high-shadowing environment (foliage).
