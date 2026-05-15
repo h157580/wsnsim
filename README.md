@@ -31,8 +31,14 @@ python3 experiments/case_study_demo.py
 - `wsnsim/energy.py`: Energy state machine (TX/RX/Idle/Sleep tracking).
 - `wsnsim/mac.py`: MAC layer (CSMA/CA with exponential backoff).
 - `wsnsim/routing.py`: Network layer (Flooding and Hierarchical Tree).
+- `wsnsim/topology.py`: Deployment logic (Node placement and connectivity graphs).
 - `wsnsim/edge_ai.py`: Intelligence (On-node Z-Score/EWMA anomaly detection).
+- `wsnsim/aggregation.py`: Data fusion (Weighted averaging and multi-hop aggregation).
+- `wsnsim/federated.py`: Federated Learning (Collaborative model training over WSN).
+- `wsnsim/security.py`: Security overhead (Energy and latency modeling for crypto).
+- `wsnsim/sync_localization.py`: Spatio-temporal services (Clock drift and node localization).
 - `wsnsim/optimization.py`: DSE Engine (Pareto front identification & Sensitivity analysis).
+- `wsnsim/common.py`: Shared primitives (Packet structures, Position, and geometry).
 
 ## Reproducibility
 - **Seed Handling:** Every component accepts a `numpy.random.Generator` instance. All experiments use fixed seed sequences.
